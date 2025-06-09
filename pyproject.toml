@@ -33,6 +33,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "starlette>=0.40.0",
     "cryptography>=41.0.0",
+    "itsdangerous>=2.0.0",
 ]
 
 [project.optional-dependencies]
