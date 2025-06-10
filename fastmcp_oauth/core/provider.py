@@ -163,7 +163,12 @@ class OAuthProvider:
     
     async def _oauth_metadata(self, request: Request):
         """OAuth 2.0 Authorization Server Metadata."""
-        base_url = self._detect_base_url(request)
+        # For metadata endpoints, prioritize configured issuer URL
+        if (self.config.OAUTH_ISSUER_URL and 
+            self.config.OAUTH_ISSUER_URL not in ["https://localhost:8000", "http://localhost:8000", ""]):
+            base_url = self.config.OAUTH_ISSUER_URL
+        else:
+            base_url = self._detect_base_url(request)
         
         return JSONResponse({
             "issuer": base_url,
@@ -179,7 +184,12 @@ class OAuthProvider:
     
     async def _oauth_protected_resource_metadata(self, request: Request):
         """OAuth 2.0 Protected Resource Metadata."""
-        base_url = self._detect_base_url(request)
+        # For metadata endpoints, prioritize configured issuer URL
+        if (self.config.OAUTH_ISSUER_URL and 
+            self.config.OAUTH_ISSUER_URL not in ["https://localhost:8000", "http://localhost:8000", ""]):
+            base_url = self.config.OAUTH_ISSUER_URL
+        else:
+            base_url = self._detect_base_url(request)
         
         return JSONResponse({
             "resource": f"{base_url}/sse",
@@ -333,8 +343,16 @@ class OAuthProvider:
     
     def _detect_base_url(self, request: Request) -> str:
         """Detect base URL from request headers."""
-        # First check if OAUTH_ISSUER_URL is explicitly set
-        if self.config.OAUTH_ISSUER_URL and self.config.OAUTH_ISSUER_URL != "https://localhost:8000":
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"OAUTH_ISSUER_URL from config: {self.config.OAUTH_ISSUER_URL}")
+        
+        # First check if OAUTH_ISSUER_URL is explicitly set and not a default value
+        if (self.config.OAUTH_ISSUER_URL and 
+            self.config.OAUTH_ISSUER_URL not in ["https://localhost:8000", "http://localhost:8000"]):
+            # Use the explicitly configured issuer URL
+            logger.info(f"Using configured OAUTH_ISSUER_URL: {self.config.OAUTH_ISSUER_URL}")
             return self.config.OAUTH_ISSUER_URL
         
         # Check for standard proxy headers
