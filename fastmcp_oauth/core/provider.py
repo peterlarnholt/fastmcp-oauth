@@ -333,12 +333,38 @@ class OAuthProvider:
     
     def _detect_base_url(self, request: Request) -> str:
         """Detect base URL from request headers."""
+        # First check if OAUTH_ISSUER_URL is explicitly set
+        if self.config.OAUTH_ISSUER_URL and self.config.OAUTH_ISSUER_URL != "https://localhost:8000":
+            return self.config.OAUTH_ISSUER_URL
+        
+        # Check for standard proxy headers
         if "x-forwarded-proto" in request.headers and "x-forwarded-host" in request.headers:
             protocol = request.headers["x-forwarded-proto"]
             host = request.headers["x-forwarded-host"]
             return f"{protocol}://{host}"
-        else:
-            return f"{request.url.scheme}://{request.url.netloc}"
+        
+        # Check for X-Forwarded-Proto only (Cloud Run case)
+        if "x-forwarded-proto" in request.headers:
+            protocol = request.headers["x-forwarded-proto"]
+            host = request.headers.get("host", request.url.netloc)
+            return f"{protocol}://{host}"
+        
+        # Check for Forwarded header (RFC 7239)
+        forwarded = request.headers.get("forwarded")
+        if forwarded:
+            import re
+            proto_match = re.search(r'proto=([^;,\s]+)', forwarded)
+            host_match = re.search(r'host=([^;,\s]+)', forwarded)
+            if proto_match and host_match:
+                return f"{proto_match.group(1)}://{host_match.group(1)}"
+        
+        # Google Cloud Run specific check
+        if request.url.netloc.endswith(".run.app"):
+            # Cloud Run always uses HTTPS for external traffic
+            return f"https://{request.url.netloc}"
+        
+        # Default fallback
+        return f"{request.url.scheme}://{request.url.netloc}"
     
     def get_auth_context(self, request: Request) -> AuthContext:
         """Extract authentication context from request."""
