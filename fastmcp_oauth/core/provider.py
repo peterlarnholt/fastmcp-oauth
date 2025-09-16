@@ -57,9 +57,6 @@ class OAuthProvider:
     
     def _validate_config(self):
         """Validate OAuth configuration."""
-        if not self.config.OAUTH_SECRET_KEY:
-            raise ConfigurationError("OAUTH_SECRET_KEY is required")
-        
         if not self.identity_providers:
             raise ConfigurationError("At least one identity provider is required")
     
